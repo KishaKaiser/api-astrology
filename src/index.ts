@@ -6,6 +6,7 @@ import userRoutes from "./routes/user"
 import kvRoutes from "./routes/kv"
 
 const app = express()
+app.set("trust proxy", 1)
 const PORT = Number(process.env.PORT) || 4001
 
 // CORS – allow configured frontend origin(s)
