@@ -27,3 +27,14 @@ model KVEntry {
 
   @@unique([userId, key])
 }
+
+model ReportRequest {
+  id        String   @id @default(cuid())
+  reportId String   @unique
+  orderId   String?
+  productName String?
+  formData  Json
+  reportText String @db.LongText
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

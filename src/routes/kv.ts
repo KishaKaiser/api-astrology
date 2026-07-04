@@ -10,7 +10,7 @@ router.use(requireAuth)
 // GET /kv/:key – return value for key, or null if not found
 router.get("/kv/:key", async (req: AuthRequest, res: Response) => {
   try {
-    const { key } = req.params
+    const key = readParam(req.params.key)
     const entry = await prisma.kVEntry.findUnique({
       where: { userId_key: { userId: req.userId as string, key } },
     })
@@ -24,7 +24,7 @@ router.get("/kv/:key", async (req: AuthRequest, res: Response) => {
 // PUT /kv/:key – upsert a value for key
 router.put("/kv/:key", async (req: AuthRequest, res: Response) => {
   try {
-    const { key } = req.params
+    const key = readParam(req.params.key)
     const { value } = req.body as { value: unknown }
 
     if (value === undefined) {
@@ -49,7 +49,7 @@ router.put("/kv/:key", async (req: AuthRequest, res: Response) => {
 // DELETE /kv/:key – delete entry for key
 router.delete("/kv/:key", async (req: AuthRequest, res: Response) => {
   try {
-    const { key } = req.params
+    const key = readParam(req.params.key)
     await prisma.kVEntry.deleteMany({
       where: { userId: req.userId as string, key },
     })
@@ -59,5 +59,9 @@ router.delete("/kv/:key", async (req: AuthRequest, res: Response) => {
     res.status(500).json({ error: "Internal server error" })
   }
 })
+
+function readParam(value: string | string[]) {
+  return Array.isArray(value) ? value[0] : value
+}
 
 export default router

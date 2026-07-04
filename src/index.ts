@@ -4,6 +4,7 @@ import rateLimit from "express-rate-limit"
 import authRoutes from "./routes/auth"
 import userRoutes from "./routes/user"
 import kvRoutes from "./routes/kv"
+import reportRoutes from "./routes/reports"
 
 const app = express()
 app.set("trust proxy", 1)
@@ -59,6 +60,7 @@ app.get("/health", (_req, res) => {
 app.use("/auth", authLimiter, authRoutes)
 app.use("/", userRoutes)
 app.use("/", kvRoutes)
+app.use("/", reportRoutes)
 
 // 404 handler
 app.use((_req, res) => {
