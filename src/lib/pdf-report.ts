@@ -16,9 +16,9 @@ export function buildReportText(chart: ChartData) {
 }
 
 function buildPdfText(chart: ChartData) {
-  const coordinateNote = chart.coordinateSource === "provided"
-    ? `Coordinates: ${chart.latitude.toFixed(4)}, ${chart.longitude.toFixed(4)}`
-    : "Coordinates were not supplied by PL_CMS. House placements use 0,0 and should be reviewed."
+  const coordinateNote = chart.coordinateSource === "fallback"
+    ? "Coordinates could not be resolved. House placements use 0,0 and should be reviewed."
+    : `Coordinates: ${chart.latitude.toFixed(4)}, ${chart.longitude.toFixed(4)} (${chart.coordinateSource})`
 
   return [
     "Psychic Link Astrology Chart",
