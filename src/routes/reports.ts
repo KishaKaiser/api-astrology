@@ -4,6 +4,7 @@ import { createReadStream } from "node:fs"
 import { join, resolve } from "node:path"
 import { prisma } from "../lib/prisma"
 import { generateChartData } from "../lib/chart-engine"
+import { geocodeBirthLocation } from "../lib/geocoding"
 import { buildReportText, writeChartPdf } from "../lib/pdf-report"
 
 const router = Router()
@@ -57,14 +58,33 @@ router.post(["/reports/generate", "/generate-report", "/api/generate-report", "/
   }
 
   try {
+    const providedLatitude = toNumber(formData.birthLatitude)
+    const providedLongitude = toNumber(formData.birthLongitude)
+    const hasProvidedCoordinates = providedLatitude !== null && providedLongitude !== null
+    const geocoded = hasProvidedCoordinates
+      ? null
+      : await geocodeBirthLocation({
+        city: formData.birthCity,
+        state: formData.birthState,
+        country: formData.birthCountry,
+      })
+    const latitude = providedLatitude ?? geocoded?.latitude ?? null
+    const longitude = providedLongitude ?? geocoded?.longitude ?? null
+    const resolvedFormData = {
+      ...formData,
+      birthLatitude: latitude,
+      birthLongitude: longitude,
+      geocodedLocation: geocoded?.displayName || null,
+    }
     const chart = generateChartData({
       name: formData.fullName || "Astrology Chart",
       date: formData.birthDate || "",
       time: formData.birthTime || "",
-      location: [formData.birthCity, formData.birthState, formData.birthCountry].filter(Boolean).join(", "),
-      latitude: toNumber(formData.birthLatitude),
-      longitude: toNumber(formData.birthLongitude),
+      location: geocoded?.displayName || [formData.birthCity, formData.birthState, formData.birthCountry].filter(Boolean).join(", "),
+      latitude,
+      longitude,
       timezone: formData.timezone,
+      coordinateSource: hasProvidedCoordinates ? "provided" : geocoded ? "geocoded" : "fallback",
     })
     const reportText = buildReportText(chart)
     const fileName = `${slugify(formData.fullName || "astrology-chart")}-${payload.reportId}.pdf`
@@ -76,14 +96,14 @@ router.post(["/reports/generate", "/generate-report", "/api/generate-report", "/
       update: {
         orderId: payload.orderId || null,
         productName: payload.productName || null,
-        formData,
+        formData: resolvedFormData,
         reportText,
       },
       create: {
         reportId: payload.reportId!,
         orderId: payload.orderId || null,
         productName: payload.productName || null,
-        formData,
+        formData: resolvedFormData,
         reportText,
       },
     })
