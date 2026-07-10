@@ -19,14 +19,14 @@ interface ReportPayload {
   }
 }
 
-router.post("/reports/generate", async (req: Request, res: Response) => {
+router.post(["/reports/generate", "/generate-report", "/api/generate-report", "/api/pl-cms/generate-report"], async (req: Request, res: Response) => {
   const authError = validateServiceToken(req)
   if (authError) {
     res.status(authError.status).json({ message: authError.message })
     return
   }
 
-  const payload = req.body as ReportPayload
+  const payload = normalizePayload(req.body as ReportPayload)
   const formData = payload.formData
   const missing = validatePayload(payload)
   if (missing.length > 0 || !formData) {
@@ -56,6 +56,8 @@ router.post("/reports/generate", async (req: Request, res: Response) => {
     })
 
     res.json({
+      reportId: payload.reportId,
+      status: "completed",
       reportText,
       fileName,
     })
@@ -65,13 +67,36 @@ router.post("/reports/generate", async (req: Request, res: Response) => {
   }
 })
 
+function normalizePayload(payload: ReportPayload): ReportPayload {
+  const formData = payload.formData || {}
+  const reportId = payload.reportId || `${payload.orderId || "plcms"}-${Date.now()}`
+
+  return {
+    ...payload,
+    reportId,
+    formData: {
+      ...formData,
+      fullName: cleanString(formData.fullName),
+      birthDate: cleanString(formData.birthDate),
+      birthTime: cleanString(formData.birthTime),
+      birthCity: cleanString(formData.birthCity),
+      birthState: cleanString(formData.birthState),
+      birthCountry: cleanString(formData.birthCountry),
+      timezone: cleanString(formData.timezone),
+      notes: cleanString(formData.notes),
+    },
+  }
+}
+
 function validateServiceToken(req: Request): { status: number; message: string } | null {
   const expected = process.env.PL_CMS_API_KEY || process.env.ASTROLOGY_SERVICE_TOKEN
   if (!expected) return null
 
   const header = req.headers.authorization || ""
   const token = header.startsWith("Bearer ") ? header.slice(7) : ""
-  if (token !== expected) {
+  const apiKey = req.headers["x-api-key"]
+  const headerKey = Array.isArray(apiKey) ? apiKey[0] : apiKey
+  if (token !== expected && headerKey !== expected) {
     return { status: 401, message: "Invalid astrology service token" }
   }
   return null
@@ -115,6 +140,10 @@ function buildReportText(payload: ReportPayload, formData: NonNullable<ReportPay
 
 function slugify(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "astrology-chart"
+}
+
+function cleanString(value: unknown) {
+  return typeof value === "string" ? value.trim() : undefined
 }
 
 export default router
